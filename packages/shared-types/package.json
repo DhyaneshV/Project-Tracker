@@ -9,7 +9,7 @@
   },
   "description": "",
   "devDependencies": {
-    "@types/node": "^25.9.2",
+    "@types/node": "^26.1.1",
     "typescript": "^6.0.3"
   },
   "scripts": {
