@@ -10,6 +10,8 @@ provider:
     CHANNELS_TABLE: ChatChannels
     ATTACHMENTS_BUCKET: ${self:service}-attachments-${sls:stage}
     JWT_SECRET: ${env:JWT_SECRET}
+    PROJECTS_SERVICE_URL: ${env:PROJECTS_SERVICE_URL}
+    FRONTEND_URL: ${env:FRONTEND_URL}
     WEBSOCKET_ENDPOINT: !Sub 'https://${WebsocketsApi}.execute-api.${AWS::Region}.amazonaws.com/${sls:stage}'
   iam:
     role:
@@ -149,5 +151,5 @@ resources:
           CorsRules:
             - AllowedHeaders: ['*']
               AllowedMethods: [PUT, GET]
-              AllowedOrigins: ['*']
+              AllowedOrigins: ['${env:FRONTEND_URL}']
               MaxAge: 3000

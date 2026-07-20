@@ -16,3 +16,6 @@ packages:
 allowBuilds:
   '@apollo/protobufjs': set this to true or false
   esbuild: set this to true or false
+
+overrides:
+  form-data: '>=4.0.6'

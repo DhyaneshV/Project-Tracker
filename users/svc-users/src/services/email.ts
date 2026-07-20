@@ -73,13 +73,15 @@ export class EmailService {
       return false;
     }
 
-    // Priority 3: Console log (no email config at all)
-    console.log(`\n━━━ EMAIL [${new Date().toISOString()}] ━━━`);
-    console.log(`To: ${to}`);
-    console.log(`Subject: ${subject}`);
-    console.log(`Body: ${textBody.slice(0, 200)}...`);
-    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n');
-    return true;
+    // Never log email bodies: they can contain passwords, OTPs, or reset links.
+    // Console delivery is allowed only for explicit local development use.
+    if (process.env.NODE_ENV !== 'production' && process.env.EMAIL_TRANSPORT === 'console') {
+      console.info(`[EMAIL] Console delivery requested for ${to}; sensitive message content is redacted.`);
+      return true;
+    }
+
+    console.error('[EMAIL] Delivery is not configured. Refusing to log sensitive message content.');
+    return false;
   }
 
   /** Send via SMTP (nodemailer) - for local dev with Gmail app password */

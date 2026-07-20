@@ -13,6 +13,7 @@ provider:
     TASK_ATTACHMENTS_BUCKET: project-tracker-task-attachments-${sls:stage}
     PROJECT_DOCS_BUCKET: project-tracker-project-docs-${sls:stage}
     JWT_SECRET: ${env:JWT_SECRET}
+    FRONTEND_URL: ${env:FRONTEND_URL}
   iam:
     role:
       statements:
