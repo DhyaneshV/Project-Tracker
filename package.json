@@ -1,0 +1,32 @@
+{
+  "name": "project-tracker-monorepo",
+  "version": "1.0.0",
+  "private": true,
+  "description": "A secure, serverless project and workforce management platform.",
+  "scripts": {
+    "dev": "concurrently \"corepack pnpm --filter @project-tracker/svc-users dev\" \"corepack pnpm --filter @project-tracker/svc-root dev\" \"corepack pnpm --filter @project-tracker/web-root dev\" \"corepack pnpm --filter @project-tracker/svc-projects dev\" \"corepack pnpm --filter @project-tracker/svc-chat dev\"",
+    "deploy": "bash deploy.sh",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2"
+  },
+  "keywords": [
+    "project-management",
+    "typescript",
+    "react",
+    "graphql",
+    "aws-lambda",
+    "serverless",
+    "rbac"
+  ],
+  "author": "Dhyanesh V",
+  "license": "ISC",
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "dependencies": {
+    "graphql": "^16.14.1",
+    "graphql-request": "^7.4.0"
+  }
+}

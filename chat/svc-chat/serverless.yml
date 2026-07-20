@@ -1,0 +1,153 @@
+service: project-tracker-chat
+
+provider:
+  name: aws
+  runtime: nodejs20.x
+  region: ${env:AWS_REGION, 'ap-south-1'}
+  environment:
+    CONNECTIONS_TABLE: ChatConnections
+    MESSAGES_TABLE: ChatMessages
+    CHANNELS_TABLE: ChatChannels
+    ATTACHMENTS_BUCKET: ${self:service}-attachments-${sls:stage}
+    JWT_SECRET: ${env:JWT_SECRET}
+    WEBSOCKET_ENDPOINT: !Sub 'https://${WebsocketsApi}.execute-api.${AWS::Region}.amazonaws.com/${sls:stage}'
+  iam:
+    role:
+      statements:
+        - Effect: Allow
+          Action:
+            - dynamodb:Query
+            - dynamodb:GetItem
+            - dynamodb:PutItem
+            - dynamodb:UpdateItem
+            - dynamodb:DeleteItem
+            - dynamodb:Scan
+          Resource:
+            - Fn::GetAtt: [ConnectionsTable, Arn]
+            - Fn::GetAtt: [MessagesTable, Arn]
+            - Fn::GetAtt: [ChannelsTable, Arn]
+            - Fn::Join: ['/', [Fn::GetAtt: [MessagesTable, Arn], 'index/*']]
+            - Fn::Join: ['/', [Fn::GetAtt: [ChannelsTable, Arn], 'index/*']]
+        - Effect: Allow
+          Action:
+            - execute-api:ManageConnections
+          Resource: 'arn:aws:execute-api:*:*:*/@connections/*'
+        - Effect: Allow
+          Action:
+            - s3:PutObject
+            - s3:GetObject
+            - s3:DeleteObject
+          Resource: !Sub 'arn:aws:s3:::${self:provider.environment.ATTACHMENTS_BUCKET}/*'
+
+functions:
+  # WebSocket handlers
+  wsConnect:
+    handler: src/ws.connect
+    events:
+      - websocket:
+          route: $connect
+
+  wsDisconnect:
+    handler: src/ws.disconnect
+    events:
+      - websocket:
+          route: $disconnect
+
+  wsMessage:
+    handler: src/ws.message
+    events:
+      - websocket:
+          route: sendMessage
+
+  # REST handlers
+  getChannels:
+    handler: src/http.getChannels
+    events:
+      - httpApi:
+          path: /chat/{projectId}/channels
+          method: get
+
+  createChannel:
+    handler: src/http.createChannel
+    events:
+      - httpApi:
+          path: /chat/{projectId}/channels
+          method: post
+
+  getMessages:
+    handler: src/http.getMessages
+    events:
+      - httpApi:
+          path: /chat/{projectId}/channels/{channelId}/messages
+          method: get
+
+  getUploadUrl:
+    handler: src/http.getUploadUrl
+    events:
+      - httpApi:
+          path: /chat/upload-url
+          method: post
+
+plugins:
+  - serverless-plugin-typescript
+  - serverless-offline
+
+resources:
+  Resources:
+    ConnectionsTable:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        TableName: ChatConnections
+        BillingMode: PAY_PER_REQUEST
+        AttributeDefinitions:
+          - AttributeName: connectionId
+            AttributeType: S
+        KeySchema:
+          - AttributeName: connectionId
+            KeyType: HASH
+        TimeToLiveSpecification:
+          AttributeName: ttl
+          Enabled: true
+
+    ChannelsTable:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        TableName: ChatChannels
+        BillingMode: PAY_PER_REQUEST
+        AttributeDefinitions:
+          - AttributeName: projectId
+            AttributeType: S
+          - AttributeName: channelId
+            AttributeType: S
+        KeySchema:
+          - AttributeName: projectId
+            KeyType: HASH
+          - AttributeName: channelId
+            KeyType: RANGE
+
+    MessagesTable:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        TableName: ChatMessages
+        BillingMode: PAY_PER_REQUEST
+        AttributeDefinitions:
+          - AttributeName: channelId
+            AttributeType: S
+          - AttributeName: createdAt
+            AttributeType: S
+        KeySchema:
+          - AttributeName: channelId
+            KeyType: HASH
+          - AttributeName: createdAt
+            KeyType: RANGE
+
+    AttachmentsBucket:
+      Type: AWS::S3::Bucket
+      Properties:
+        BucketName: ${self:provider.environment.ATTACHMENTS_BUCKET}
+        CorsConfiguration:
+          CorsRules:
+            - AllowedHeaders: ['*']
+              AllowedMethods: [PUT, GET]
+              AllowedOrigins: ['*']
+              MaxAge: 3000

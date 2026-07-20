@@ -1,0 +1,267 @@
+service: project-tracker-projects
+
+provider:
+  name: aws
+  runtime: nodejs20.x
+  region: ${env:AWS_REGION, 'ap-south-1'}
+  environment:
+    PROJECTS_TABLE: ${env:PROJECTS_TABLE, 'Projects'}
+    TASKS_TABLE: ${env:TASKS_TABLE, 'Tasks'}
+    PROJECT_UPDATES_TABLE: ${env:PROJECT_UPDATES_TABLE, 'ProjectUpdates'}
+    SRS_DOCUMENTS_TABLE: ${env:SRS_DOCUMENTS_TABLE, 'SRSDocuments'}
+    PROJECT_DOCUMENTS_TABLE: ProjectDocuments
+    TASK_ATTACHMENTS_BUCKET: project-tracker-task-attachments-${sls:stage}
+    PROJECT_DOCS_BUCKET: project-tracker-project-docs-${sls:stage}
+    JWT_SECRET: ${env:JWT_SECRET}
+  iam:
+    role:
+      statements:
+        - Effect: Allow
+          Action: [s3:PutObject, s3:GetObject, s3:DeleteObject]
+          Resource:
+            - 'arn:aws:s3:::project-tracker-task-attachments-${sls:stage}/*'
+            - 'arn:aws:s3:::project-tracker-project-docs-${sls:stage}/*'
+        - Effect: Allow
+          Action:
+            - dynamodb:Query
+            - dynamodb:Scan
+            - dynamodb:GetItem
+            - dynamodb:PutItem
+            - dynamodb:UpdateItem
+            - dynamodb:DeleteItem
+          Resource:
+            - Fn::GetAtt: [ProjectsTable, Arn]
+            - Fn::GetAtt: [TasksTable, Arn]
+            - Fn::GetAtt: [ProjectUpdatesTable, Arn]
+            - Fn::GetAtt: [SRSDocumentsTable, Arn]
+            - Fn::GetAtt: [ProjectDocumentsTable, Arn]
+            - Fn::Join:
+                - "/"
+                - - Fn::GetAtt: [ProjectsTable, Arn]
+                  - "index/*"
+            - Fn::Join:
+                - "/"
+                - - Fn::GetAtt: [TasksTable, Arn]
+                  - "index/*"
+            - Fn::Join:
+                - "/"
+                - - Fn::GetAtt: [ProjectUpdatesTable, Arn]
+                  - "index/*"
+            - Fn::Join:
+                - "/"
+                - - Fn::GetAtt: [ProjectDocumentsTable, Arn]
+                  - "index/*"
+            - Fn::Join:
+                - "/"
+                - - Fn::GetAtt: [SRSDocumentsTable, Arn]
+                  - "index/*"
+
+functions:
+  graphql:
+    handler: src/index.handler
+    events:
+      - httpApi:
+          path: /graphql
+          method: post
+      - httpApi:
+          path: /graphql
+          method: get
+  getTaskUploadUrl:
+    handler: src/attachments.getTaskUploadUrl
+    events:
+      - httpApi:
+          path: /tasks/{taskId}/upload-url
+          method: post
+
+  getProjectDocUploadUrl:
+    handler: src/documents.getProjectDocUploadUrl
+    events:
+      - httpApi:
+          path: /projects/{projectId}/docs/upload-url
+          method: post
+
+  confirmProjectDoc:
+    handler: src/documents.confirmProjectDoc
+    events:
+      - httpApi:
+          path: /projects/{projectId}/docs/confirm
+          method: post
+
+  listProjectDocs:
+    handler: src/documents.listProjectDocs
+    events:
+      - httpApi:
+          path: /projects/{projectId}/docs
+          method: get
+
+  deleteProjectDoc:
+    handler: src/documents.deleteProjectDoc
+    events:
+      - httpApi:
+          path: /projects/{projectId}/docs/{docId}
+          method: delete
+
+plugins:
+  - serverless-plugin-typescript
+  - serverless-offline
+
+package:
+  individually: true
+
+resources:
+  Resources:
+    ProjectsTable:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        TableName: ${self:provider.environment.PROJECTS_TABLE}
+        BillingMode: PAY_PER_REQUEST
+        AttributeDefinitions:
+          - AttributeName: id
+            AttributeType: S
+          - AttributeName: status
+            AttributeType: S
+          - AttributeName: teamLeaderId
+            AttributeType: S
+          - AttributeName: createdBy
+            AttributeType: S
+        KeySchema:
+          - AttributeName: id
+            KeyType: HASH
+        GlobalSecondaryIndexes:
+          - IndexName: StatusIndex
+            KeySchema:
+              - AttributeName: status
+                KeyType: HASH
+            Projection:
+              ProjectionType: ALL
+          - IndexName: TeamLeaderIndex
+            KeySchema:
+              - AttributeName: teamLeaderId
+                KeyType: HASH
+            Projection:
+              ProjectionType: ALL
+          - IndexName: CreatedByIndex
+            KeySchema:
+              - AttributeName: createdBy
+                KeyType: HASH
+            Projection:
+              ProjectionType: ALL
+    
+    TasksTable:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        TableName: ${self:provider.environment.TASKS_TABLE}
+        BillingMode: PAY_PER_REQUEST
+        AttributeDefinitions:
+          - AttributeName: id
+            AttributeType: S
+          - AttributeName: projectId
+            AttributeType: S
+        KeySchema:
+          - AttributeName: id
+            KeyType: HASH
+        GlobalSecondaryIndexes:
+          - IndexName: ProjectIdIndex
+            KeySchema:
+              - AttributeName: projectId
+                KeyType: HASH
+            Projection:
+              ProjectionType: ALL
+    
+    ProjectUpdatesTable:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        TableName: ${self:provider.environment.PROJECT_UPDATES_TABLE}
+        BillingMode: PAY_PER_REQUEST
+        AttributeDefinitions:
+          - AttributeName: id
+            AttributeType: S
+          - AttributeName: projectId
+            AttributeType: S
+          - AttributeName: createdAt
+            AttributeType: S
+        KeySchema:
+          - AttributeName: id
+            KeyType: HASH
+        GlobalSecondaryIndexes:
+          - IndexName: ProjectIdIndex
+            KeySchema:
+              - AttributeName: projectId
+                KeyType: HASH
+              - AttributeName: createdAt
+                KeyType: RANGE
+            Projection:
+              ProjectionType: ALL
+    
+    SRSDocumentsTable:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        TableName: ${self:provider.environment.SRS_DOCUMENTS_TABLE}
+        BillingMode: PAY_PER_REQUEST
+        AttributeDefinitions:
+          - AttributeName: id
+            AttributeType: S
+          - AttributeName: projectId
+            AttributeType: S
+          - AttributeName: createdAt
+            AttributeType: S
+        KeySchema:
+          - AttributeName: id
+            KeyType: HASH
+        GlobalSecondaryIndexes:
+          - IndexName: ProjectIdIndex
+            KeySchema:
+              - AttributeName: projectId
+                KeyType: HASH
+              - AttributeName: createdAt
+                KeyType: RANGE
+            Projection:
+              ProjectionType: ALL
+
+
+    TaskAttachmentsBucket:
+      Type: AWS::S3::Bucket
+      Properties:
+        BucketName: ${self:provider.environment.TASK_ATTACHMENTS_BUCKET}
+        CorsConfiguration:
+          CorsRules:
+            - AllowedHeaders: ['*']
+              AllowedMethods: [PUT, GET]
+              AllowedOrigins: ['*']
+              MaxAge: 3000
+
+    ProjectDocumentsTable:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        TableName: ProjectDocuments
+        BillingMode: PAY_PER_REQUEST
+        AttributeDefinitions:
+          - AttributeName: projectId
+            AttributeType: S
+          - AttributeName: createdAt
+            AttributeType: S
+        KeySchema:
+          - AttributeName: projectId
+            KeyType: HASH
+          - AttributeName: createdAt
+            KeyType: RANGE
+        GlobalSecondaryIndexes:
+          - IndexName: ProjectIdIndex
+            KeySchema:
+              - AttributeName: projectId
+                KeyType: HASH
+              - AttributeName: createdAt
+                KeyType: RANGE
+            Projection:
+              ProjectionType: ALL
+
+    ProjectDocsBucket:
+      Type: AWS::S3::Bucket
+      Properties:
+        BucketName: ${self:provider.environment.PROJECT_DOCS_BUCKET}
+        CorsConfiguration:
+          CorsRules:
+            - AllowedHeaders: ['*']
+              AllowedMethods: [PUT, GET, DELETE]
+              AllowedOrigins: ['*']
+              MaxAge: 3000

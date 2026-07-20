@@ -1,0 +1,824 @@
+scalar DateTime
+
+enum OrgRole {
+  ADMIN
+  MEMBER
+}
+
+enum UserCategory {
+  C_SUITE
+  SVP
+  VP
+  SENIOR_MANAGER
+  MANAGER
+  TEAM_LEAD
+  SENIOR_IC
+  JUNIOR_IC
+}
+
+enum FunctionalRole {
+  # LEVEL 1: C-SUITE
+  CEO
+  CTO
+  CFO
+  COO
+  CHRO
+
+  # LEVEL 2: SVP
+  SVP_ENGINEERING
+  SVP_PRODUCT
+  SVP_OPERATIONS
+
+  # LEVEL 3: VP/DIRECTOR
+  VP_BACKEND
+  VP_FRONTEND
+  VP_MOBILE
+  VP_DEVOPS
+  VP_QA
+  VP_PRODUCT
+  VP_DESIGN
+  VP_DATA
+  VP_HR
+  VP_SALES
+
+  # LEVEL 4: SENIOR MANAGER/DIRECTOR
+  SENIOR_ENGINEERING_MANAGER
+  SENIOR_PRODUCT_DIRECTOR
+  SENIOR_QA_DIRECTOR
+  SENIOR_DATA_DIRECTOR
+
+  # LEVEL 5: MANAGER/TEAM LEAD
+  BACKEND_TEAM_MANAGER
+  FRONTEND_TEAM_MANAGER
+  MOBILE_TEAM_MANAGER
+  DEVOPS_TEAM_MANAGER
+  QA_TEAM_MANAGER
+  PRODUCT_TEAM_MANAGER
+  DESIGN_TEAM_MANAGER
+  DATA_TEAM_MANAGER
+  HR_TEAM_MANAGER
+  SALES_TEAM_MANAGER
+
+  # LEVEL 6: SENIOR IC
+  SENIOR_BACKEND_DEV
+  SENIOR_FRONTEND_DEV
+  SENIOR_MOBILE_DEV
+  SENIOR_DEVOPS_ENG
+  SENIOR_QA_ENG
+  SENIOR_DATA_ENG
+  SENIOR_DATA_SCIENTIST
+  SENIOR_DESIGNER
+  SENIOR_PRODUCT_MANAGER
+  SENIOR_HR_SPECIALIST
+  RECRUITER
+  SENIOR_SALES_EXECUTIVE
+
+  # LEVEL 7: JUNIOR IC
+  BACKEND_DEV
+  FRONTEND_DEV
+  MOBILE_DEV
+  DEVOPS_ENG
+  QA_ENG
+  DATA_ANALYST
+  DATA_ENG
+  DESIGNER
+  PRODUCT_ASSOCIATE
+  HR_COORDINATOR
+  SALES_REP
+  INTERN
+
+  # Legacy
+  MANAGER
+  TEAM_LEADER
+}
+
+enum UserStatus {
+  ACTIVE
+  INACTIVE
+  SUSPENDED
+  PENDING_VERIFICATION
+  ONBOARDING
+}
+
+enum Department {
+  BACKEND
+  FRONTEND
+  MOBILE
+  DEVOPS
+  QA
+  PRODUCT
+  DESIGN
+  DATA
+  HR
+  SALES
+  EXECUTIVE
+}
+
+enum TwoFactorMethod {
+  EMAIL_OTP
+  TOTP
+  NONE
+}
+
+enum ProjectRole {
+  TEAM_LEAD
+  VICE_TEAM_LEAD
+  ENGINEER
+  QA_ENGINEER
+  MEMBER
+}
+
+enum MemberSpecialty {
+  FRONTEND
+  BACKEND
+  ML
+  DEPLOYER
+  TESTER
+  DESIGNER
+  QA
+  DEVOPS
+  GENERAL
+}
+
+enum ProjectStatus {
+  PLANNING
+  ACTIVE
+  ON_HOLD
+  COMPLETED
+  ARCHIVED
+}
+
+enum ProjectCategory {
+  INTERNAL
+  CLIENT
+  PRODUCT
+  MAINTENANCE
+}
+
+enum TaskStatus {
+  TODO
+  IN_PROGRESS
+  BLOCKED
+  COMPLETED
+  ON_HOLD
+}
+
+enum TaskPriority {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
+enum UpdateType {
+  MILESTONE_REACHED
+  STATUS_CHANGE
+  BLOCKER_FOUND
+  RISK_ALERT
+  TEAM_CHANGE
+  DEADLINE_CHANGE
+  COMPLETION_CHANGE
+}
+
+enum Severity {
+  INFO
+  WARNING
+  CRITICAL
+}
+
+enum DocumentType {
+  SRS
+  API_KEYS
+  DESIGN
+  CONTRACT
+  ARCHITECTURE
+  MEETING_NOTES
+  ROADMAP
+  CREDENTIALS
+  DEPLOYMENT
+  OTHER
+}
+
+type ProjectDocument {
+  projectId: ID!
+  docId: ID!
+  createdAt: DateTime!
+  title: String!
+  description: String
+  type: DocumentType!
+  tags: [String!]!
+  fileKey: String!
+  fileName: String!
+  mimeType: String!
+  fileSize: Int!
+  version: Int!
+  uploadedBy: ID!
+  updatedAt: DateTime!
+  restricted: Boolean!
+}
+
+enum ActionType {
+  INVITE
+  DROP
+  ROLE_UPDATE
+  STATUS_UPDATE
+  ENABLE_2FA
+  DISABLE_2FA
+  LOGIN
+  ACCOUNT_LOCK
+  RESEND_INVITE
+  PROJECT_CREATE
+  PROJECT_UPDATE
+  TASK_CREATE
+  TASK_STATUS_UPDATE
+}
+
+type Organization {
+  id: ID!
+  name: String!
+  createdAt: DateTime!
+}
+
+type User {
+  id: ID!
+  email: String!
+  fullName: String!
+  orgRole: OrgRole!
+  category: UserCategory!
+  role: FunctionalRole!
+  department: Department!
+  specialty: MemberSpecialty
+  status: UserStatus!
+  organizationId: ID!
+  organization: Organization
+  departmentId: ID
+  teamId: ID
+  subTeamId: ID
+  projectId: ID
+  
+  # Project assignments
+  assignedProjectIds: [ID!]
+  managedTeamIds: [ID!]
+  
+  # Hierarchy
+  hierarchyLevel: Int!
+  managedTeams: [ID!]
+  managedEmployees: [ID!]
+  reportingManagerId: ID
+  directReportCount: Int
+
+  # Security Fields
+  twoFactorEnabled: Boolean!
+  twoFactorMethod: TwoFactorMethod!
+  credentialsExpiryDate: DateTime
+  lastLoginAt: DateTime
+  
+  createdAt: DateTime!
+}
+
+type ProjectMember {
+  user: User!
+  userId: ID!
+  name: String
+  projectRole: ProjectRole!
+  specialty: MemberSpecialty!
+  contribution: Float!
+  allocation: Int!
+  startDate: DateTime
+  joinedAt: DateTime!
+  status: String!
+}
+
+type Project {
+  id: ID!
+  name: String!
+  description: String!
+  category: ProjectCategory!
+  status: ProjectStatus!
+  completionPercentage: Float!
+  startDate: DateTime!
+  targetEndDate: DateTime!
+  releaseDate: DateTime
+  estimatedDays: Int
+  budgetUSD: Float
+  maxTeamSize: Int!
+  currentTeamSize: Int
+  specialtiesNeeded: [MemberSpecialty!]
+  srsDocumentUrl: String
+  srsDocumentVersion: Int
+  teamLeader: User
+  projectLeadId: ID
+  viceTeamLeader: User
+  managedByIds: [ID!]
+  teamMembers: [ProjectMember!]!
+  createdBy: User!
+  createdAt: DateTime!
+  updatedAt: DateTime
+}
+
+type TaskAttachment {
+  fileKey: String!
+  fileName: String!
+  mimeType: String!
+  fileSize: Int!
+  uploadedBy: ID!
+  uploadedAt: DateTime!
+  url: String
+}
+
+type ProjectTask {
+  id: ID!
+  projectId: ID!
+  title: String!
+  description: String
+  status: TaskStatus!
+  priority: TaskPriority!
+  specialty: MemberSpecialty
+  assignedTo: User
+  component: String
+  dependsOn: [ID!]
+  startDate: DateTime
+  dueDate: DateTime
+  completedAt: DateTime
+  blockerReason: String
+  attachments: [TaskAttachment!]!
+  createdAt: DateTime!
+}
+
+type ProjectUpdate {
+  id: ID!
+  projectId: ID!
+  type: UpdateType!
+  title: String!
+  description: String
+  severity: Severity!
+  createdBy: User!
+  createdAt: DateTime!
+}
+
+type AuditLog {
+  auditId: ID!
+  userId: String!
+  actionType: ActionType!
+  targetUserId: String
+  oldValue: String
+  newValue: String
+  ipAddress: String
+  timestamp: DateTime!
+}
+
+type AuditLogPage {
+  items: [AuditLog!]!
+  nextCursor: String
+  totalCount: Int
+}
+
+type TeamContribution {
+  user: User!
+  contributionPercentage: Float!
+  tasksCompleted: Int!
+}
+
+type ProjectAnalytics {
+  projectId: ID!
+  totalTasks: Int!
+  completedTasks: Int!
+  blockedTasks: Int!
+  velocity: Float!
+  teamContribution: [TeamContribution!]!
+  timelineHealth: Float!
+}
+
+type SalaryData {
+  amount: Float!
+  currency: String!
+  lastUpdated: DateTime
+}
+
+type SRSDocument {
+  id: ID!
+  projectId: ID!
+  version: Int!
+  url: String!
+  status: String!
+  uploadedBy: User!
+  createdAt: DateTime!
+}
+
+type InviteUserPayload {
+  userId: ID!
+  email: String!
+  invitationExpiry: DateTime
+  temporaryPassword: String
+  status: String!
+}
+
+## ── Org-Wide Analytics (Executive Dashboard) ─────────────────────────────────
+
+type OrgAnalytics {
+  totalProjects: Int!
+  activeProjects: Int!
+  completedProjects: Int!
+  onHoldProjects: Int!
+  totalTasks: Int!
+  completedTasks: Int!
+  blockedTasks: Int!
+  inProgressTasks: Int!
+  totalBudget: Float!
+  spentBudget: Float!
+  totalHeadcount: Int!
+  avgProjectHealth: Float!
+  avgCompletionRate: Float!
+  projectsByCategory: [CategoryCount!]!
+  departmentUtilization: [DepartmentUtil!]!
+}
+
+type CategoryCount {
+  category: ProjectCategory!
+  count: Int!
+}
+
+type DepartmentUtil {
+  department: String!
+  memberCount: Int!
+  activeTaskCount: Int!
+}
+
+type RiskAlert {
+  id: ID!
+  projectId: ID!
+  projectName: String!
+  type: String!
+  severity: Severity!
+  message: String!
+  createdAt: DateTime!
+}
+
+type BudgetSummary {
+  projectId: ID!
+  projectName: String!
+  budgetUSD: Float!
+  completionPercentage: Float!
+  status: ProjectStatus!
+  burnRate: Float!
+  estimatedOverrun: Float!
+}
+
+## ── Internal Messaging (Role-Based Communication) ────────────────────────────
+
+enum MessagePriority {
+  NORMAL
+  URGENT
+  CRITICAL
+}
+
+type DirectMessage {
+  id: ID!
+  senderId: ID!
+  senderName: String!
+  senderRole: FunctionalRole!
+  recipientId: ID!
+  recipientName: String!
+  recipientRole: FunctionalRole!
+  subject: String!
+  content: String!
+  priority: MessagePriority!
+  read: Boolean!
+  createdAt: DateTime!
+  parentMessageId: ID
+}
+
+type Conversation {
+  recipientId: ID!
+  recipientName: String!
+  recipientRole: FunctionalRole!
+  lastMessage: String!
+  lastMessageAt: DateTime!
+  unreadCount: Int!
+}
+
+type ActivityEvent {
+  id: ID!
+  type: String!
+  title: String!
+  description: String
+  projectName: String
+  projectId: ID
+  actorName: String
+  severity: String
+  createdAt: DateTime!
+}
+
+type DeadlineItem {
+  id: ID!
+  projectId: ID!
+  projectName: String!
+  type: String!
+  title: String!
+  dueDate: DateTime!
+  daysLeft: Int!
+  status: String!
+  priority: String
+}
+
+## ── Project Allocation Requests ──────────────────────────────────────────────
+
+enum AllocationStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+type AllocationRequest {
+  id: ID!
+  projectId: ID!
+  projectName: String!
+  requestedBy: ID!
+  requestedByName: String!
+  requestedUserId: ID!
+  requestedUserName: String!
+  requestedUserRole: FunctionalRole
+  specialty: MemberSpecialty!
+  allocation: Int!
+  projectRole: ProjectRole!
+  reason: String
+  status: AllocationStatus!
+  approvedBy: ID
+  approvedByName: String
+  rejectionReason: String
+  createdAt: DateTime!
+  resolvedAt: DateTime
+}
+
+type Query {
+  me: User
+  
+  getAllUsers(
+    roleFilter: [FunctionalRole]
+    statusFilter: [UserStatus]
+    twoFactorFilter: Boolean
+  ): [User!]!
+  
+  getAuditLogs(limit: Int, cursor: String): AuditLogPage!
+  
+  # FEATURE 2: TEAM INVITATIONS (TL ONLY)
+  projectTeamMembers(projectId: ID!): [ProjectMember!]!
+  availableEmployeesForProject(projectId: ID!, search: String): [User!]!
+
+  # Users & HR
+  getMyTeamMembers: [User!]!
+  getDepartmentEmployees(department: Department): [User!]!
+  getEmployeeById(userId: ID!): User
+  getSalaryData(userId: ID!): SalaryData
+
+  # Projects
+  getProjects(status: ProjectStatus): [Project!]!
+  getProject(id: ID!): Project
+  getProjectTasks(projectId: ID!, status: TaskStatus): [ProjectTask!]!
+  getProjectUpdates(projectId: ID!): [ProjectUpdate!]!
+  getProjectAnalytics(projectId: ID!): ProjectAnalytics!
+  getSRSDocuments(projectId: ID!): [SRSDocument!]!
+  listProjectDocuments(projectId: ID!, type: DocumentType): [ProjectDocument!]!
+
+  # Executive Dashboard (C_SUITE / SVP / VP only)
+  getOrgAnalytics: OrgAnalytics!
+  getOrgRiskAlerts: [RiskAlert!]!
+  getBudgetOverview: [BudgetSummary!]!
+
+  # Internal Messaging
+  getConversations: [Conversation!]!
+  getDirectMessages(recipientId: ID!, limit: Int, before: DateTime): [DirectMessage!]!
+  getUnreadCount: Int!
+
+  # Personal & Cross-Project Views
+  getMyTasks: [ProjectTask!]!
+  getActivityFeed(limit: Int): [ActivityEvent!]!
+  getUpcomingDeadlines: [DeadlineItem!]!
+
+  # Allocation Requests
+  getPendingAllocations: [AllocationRequest!]!
+  getProjectAllocations(projectId: ID!): [AllocationRequest!]!
+
+  # Notifications
+  getMyNotifications(limit: Int): [Notification!]!
+  getUnreadNotificationCount: Int!
+  getNotificationPreferences: NotificationPreferences!
+
+  # Payroll
+  getSalaryStructure(userId: ID!): SalaryStructure
+  getAllSalaryStructures: [SalaryStructure!]!
+  getPayrollRun(runId: ID!): PayrollRun
+  getPayrollHistory: [PayrollRun!]!
+  getPayslip(userId: ID!, month: String!): Payslip
+  getMyPayslips: [Payslip!]!
+}
+
+type Mutation {
+  signup(email: String!, fullName: String!, password: String!, organizationName: String): AuthPayload!
+  login(email: String!, password: String!): LoginStep1Payload!
+  verifyLoginOTP(email: String!, otp: String!): AuthPayload!
+  changePassword(newPassword: String!): Boolean!
+  requestPasswordReset(email: String!): Boolean!
+  resetPassword(token: String!, newPassword: String!): Boolean!
+  
+  # MANAGER-ONLY MUTATIONS
+  inviteUser(
+    email: String!, 
+    fullName: String!, 
+    category: UserCategory!, 
+    role: FunctionalRole!, 
+    department: Department!,
+    specialty: MemberSpecialty,
+    assignedProjectIds: [ID!],
+    managedTeamIds: [ID!],
+    reportingManagerId: ID,
+    organizationId: ID,
+    twoFactorRequired: Boolean
+  ): InviteUserPayload!
+  resendInvitation(userId: ID!): Boolean!
+  dropUser(userId: ID!, otp: String!): DropUserPayload!
+  updateUserStatus(userId: ID!, status: UserStatus!): User!
+  updateUserOrgRole(userId: ID!, orgRole: OrgRole!, role: FunctionalRole): User!
+  updateUserRole(userId: ID!, newRole: FunctionalRole!): User!
+  promoteUser(userId: ID!, newRole: FunctionalRole, newLevel: Int): User!
+  suspendUser(userId: ID!, reason: String!): User!
+  changeReportingManager(userId: ID!, newManagerId: ID!): User!
+  requestSecurityOTP: Boolean!
+
+  # MANAGER/C_SUITE ONLY - Member management
+  addMemberToProject(projectId: ID!, userId: ID!, projectRole: ProjectRole!, specialty: MemberSpecialty!, allocation: Int!, startDate: DateTime!): ProjectMember!
+  removeTeamMemberFromProject(projectId: ID!, userId: ID!): Boolean!
+  
+  # Projects & Tasks
+  createProject(name: String!, description: String!, category: ProjectCategory!, startDate: DateTime!, targetEndDate: DateTime!, releaseDate: DateTime, estimatedDays: Int, maxTeamSize: Int!, projectLeadId: ID, viceTeamLeaderId: ID, budgetUSD: Float, specialtiesNeeded: [MemberSpecialty!]): Project!
+  updateProjectDetails(projectId: ID!, name: String, description: String, status: ProjectStatus, targetEndDate: DateTime, budgetUSD: Float): Project!
+  updateProjectProgress(projectId: ID!, completionPercentage: Float!, status: ProjectStatus): Project!
+  addProjectUpdate(projectId: ID!, type: UpdateType!, title: String!, description: String, severity: Severity!): ProjectUpdate!
+  createTask(projectId: ID!, title: String!, priority: TaskPriority!, specialty: MemberSpecialty, assignedToId: ID, dependsOn: [ID!]): ProjectTask!
+  updateTaskStatus(taskId: ID!, status: TaskStatus!, blockerReason: String, completionNote: String): ProjectTask!
+  addTaskAttachment(taskId: ID!, fileKey: String!, fileName: String!, mimeType: String!, fileSize: Int!): ProjectTask!
+  removeTaskAttachment(taskId: ID!, fileKey: String!): ProjectTask!
+  uploadSRSDocument(projectId: ID!, url: String!, version: Int!): SRSDocument!
+  confirmProjectDoc(projectId: ID!, docId: ID!, fileKey: String!, title: String!, description: String, type: DocumentType!, tags: [String!], fileName: String!, mimeType: String!, fileSize: Int!, version: Int): ProjectDocument!
+  deleteProjectDoc(projectId: ID!, docId: ID!): Boolean!
+  
+  # Internal Messaging
+  sendDirectMessage(recipientId: ID!, subject: String!, content: String!, priority: MessagePriority, parentMessageId: ID): DirectMessage!
+  markMessagesRead(senderId: ID!): Boolean!
+
+  # Allocation Requests (Project Lead requests → Manager approves)
+  createAllocationRequest(projectId: ID!, requestedUserId: ID!, specialty: MemberSpecialty!, allocation: Int!, projectRole: ProjectRole!, reason: String): AllocationRequest!
+  approveAllocation(requestId: ID!): AllocationRequest!
+  rejectAllocation(requestId: ID!, reason: String!): AllocationRequest!
+
+  enable2FA(method: TwoFactorMethod!): TwoFactorSetupPayload!
+  verify2FASetup(method: TwoFactorMethod!, code: String!): Boolean!
+  adminUpdate2FA(userId: ID!, enabled: Boolean!, method: TwoFactorMethod): User!
+  logout: Boolean!
+
+  # Notifications
+  markNotificationRead(notificationId: ID!, createdAt: DateTime!): Boolean!
+  updateNotificationPreferences(preferences: NotificationPreferencesInput!): NotificationPreferences!
+  markAllNotificationsRead: Boolean!
+
+  # Payroll (C_SUITE / HR only)
+  setSalaryStructure(userId: ID!, basicPay: Float!, hraPercentage: Float, conveyanceAllowance: Float, medicalAllowance: Float, specialAllowance: Float, pfEnabled: Boolean, esiEnabled: Boolean, ptEnabled: Boolean, tdsPercentage: Float): SalaryStructure!
+  runPayroll(month: String!, totalWorkingDays: Int!): PayrollRun!
+  approvePayroll(runId: ID!): PayrollRun!
+}
+
+type AuthPayload {
+  user: User!
+  token: String!
+  isNewUser: Boolean!
+  requiredActions: [String!]
+}
+
+type LoginStep1Payload {
+  requiresOTP: Boolean!
+  otpExpiry: DateTime!
+  message: String!
+}
+
+type DropUserPayload {
+  success: Boolean!
+  auditId: ID
+}
+
+type TwoFactorSetupPayload {
+  method: TwoFactorMethod!
+  qrCodeSVG: String
+  secret: String
+  instructions: String
+}
+
+# ─── NOTIFICATIONS ──────────────────────────────────────────────────────
+
+enum NotificationType {
+  TASK_ASSIGNED
+  TASK_COMPLETED
+  PROJECT_UPDATE
+  MENTION
+  MEMBER_ADDED
+  BLOCKER
+}
+
+type Notification {
+  id: ID!
+  userId: ID!
+  type: NotificationType!
+  title: String!
+  message: String
+  projectId: ID
+  projectName: String
+  taskId: ID
+  actorName: String
+  read: Boolean!
+  createdAt: DateTime!
+}
+
+type NotificationPreferences {
+  emailEnabled: Boolean!
+  inAppEnabled: Boolean!
+  taskAssigned: Boolean!
+  taskStatusChanged: Boolean!
+  projectUpdates: Boolean!
+  teamChanges: Boolean!
+  payrollUpdates: Boolean!
+  securityAlerts: Boolean!
+  messageNotifications: Boolean!
+}
+
+input NotificationPreferencesInput {
+  emailEnabled: Boolean
+  inAppEnabled: Boolean
+  taskAssigned: Boolean
+  taskStatusChanged: Boolean
+  projectUpdates: Boolean
+  teamChanges: Boolean
+  payrollUpdates: Boolean
+  securityAlerts: Boolean
+  messageNotifications: Boolean
+}
+
+
+# ─── PAYROLL ────────────────────────────────────────────────────────────────
+
+type SalaryStructure {
+  userId: ID!
+  orgId: String!
+  basicPay: Float!
+  hraPercentage: Float!
+  conveyanceAllowance: Float!
+  medicalAllowance: Float!
+  specialAllowance: Float!
+  pfEnabled: Boolean!
+  esiEnabled: Boolean!
+  ptEnabled: Boolean!
+  tdsPercentage: Float!
+  effectiveFrom: String!
+  updatedAt: String!
+}
+
+type PayslipEarning {
+  label: String!
+  amount: Float!
+}
+
+type PayslipDeduction {
+  label: String!
+  amount: Float!
+}
+
+type Payslip {
+  userId: ID!
+  month: String!
+  runId: String!
+  employeeName: String!
+  designation: String!
+  department: String!
+  earnings: [PayslipEarning!]!
+  deductions: [PayslipDeduction!]!
+  grossPay: Float!
+  totalDeductions: Float!
+  netPay: Float!
+  workingDays: Int!
+  attendanceDays: Int!
+  status: String!
+  createdAt: String!
+}
+
+type PayrollRun {
+  runId: ID!
+  orgId: String!
+  month: String!
+  status: String!
+  totalEmployees: Int!
+  totalGross: Float!
+  totalDeductions: Float!
+  totalNet: Float!
+  createdBy: String!
+  approvedBy: String
+  createdAt: String!
+  approvedAt: String
+}

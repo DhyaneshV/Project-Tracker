@@ -1,0 +1,190 @@
+service: project-tracker-gateway
+
+frameworkVersion: '3'
+
+provider:
+  name: aws
+  runtime: nodejs20.x
+  region: ${env:AWS_REGION, 'ap-south-1'}
+  stage: ${opt:stage, 'dev'}
+  memorySize: 512
+  timeout: 30
+  architecture: arm64  # Graviton2 - 20% cheaper, better performance
+
+  # Environment variables (injected from .env or CI/CD)
+  environment:
+    NODE_ENV: production
+    USERS_SERVICE_URL: ${env:USERS_SERVICE_URL}
+    PROJECTS_SERVICE_URL: ${env:PROJECTS_SERVICE_URL}
+    CHAT_SERVICE_URL: ${env:CHAT_SERVICE_URL}
+    JWT_SECRET: ${env:JWT_SECRET}
+    FRONTEND_URL: ${env:FRONTEND_URL}
+    GOOGLE_CLIENT_ID: ${env:GOOGLE_CLIENT_ID}
+    GOOGLE_CLIENT_SECRET: ${env:GOOGLE_CLIENT_SECRET}
+    GOOGLE_CALLBACK_URL: ${env:GOOGLE_CALLBACK_URL}
+    GITHUB_CLIENT_ID: ${env:GITHUB_CLIENT_ID}
+    GITHUB_CLIENT_SECRET: ${env:GITHUB_CLIENT_SECRET}
+    GITHUB_CALLBACK_URL: ${env:GITHUB_CALLBACK_URL}
+    SES_FROM_EMAIL: ${env:SES_FROM_EMAIL, 'noreply@projecttracker.com'}
+    SES_REGION: ${env:SES_REGION, 'ap-south-1'}
+
+  # IAM permissions for the Lambda
+  iam:
+    role:
+      statements:
+        - Effect: Allow
+          Action:
+            - dynamodb:GetItem
+            - dynamodb:PutItem
+            - dynamodb:UpdateItem
+            - dynamodb:DeleteItem
+            - dynamodb:Query
+            - dynamodb:Scan
+          Resource:
+            - arn:aws:dynamodb:${self:provider.region}:*:table/ProjectTracker*
+        - Effect: Allow
+          Action:
+            - ses:SendEmail
+            - ses:SendRawEmail
+          Resource: '*'
+        - Effect: Allow
+          Action:
+            - s3:GetObject
+            - s3:PutObject
+            - s3:DeleteObject
+          Resource:
+            - arn:aws:s3:::project-tracker-*/*
+
+  # API Gateway settings
+  httpApi:
+    cors:
+      allowedOrigins:
+        - ${env:FRONTEND_URL, 'http://localhost:3000'}
+      allowedHeaders:
+        - Content-Type
+        - Authorization
+      allowedMethods:
+        - GET
+        - POST
+        - OPTIONS
+      allowCredentials: true
+      maxAge: 86400
+
+functions:
+  api:
+    handler: dist/index.handler
+    events:
+      - httpApi:
+          path: /graphql
+          method: POST
+      - httpApi:
+          path: /graphql
+          method: GET
+      - httpApi:
+          path: /auth/{proxy+}
+          method: any
+      - httpApi:
+          path: /chat/{proxy+}
+          method: any
+      - httpApi:
+          path: /tasks/{proxy+}
+          method: any
+      - httpApi:
+          path: /projects/{proxy+}
+          method: any
+    # Provisioned concurrency for cold start reduction (optional, costs more)
+    # provisionedConcurrency: 2
+
+# CloudFormation resources for S3 + CloudFront (frontend hosting)
+resources:
+  Resources:
+    # S3 bucket for frontend static files
+    FrontendBucket:
+      Type: AWS::S3::Bucket
+      Properties:
+        BucketName: project-tracker-frontend-${self:provider.stage}
+        PublicAccessBlockConfiguration:
+          BlockPublicAcls: true
+          BlockPublicPolicy: true
+          IgnorePublicAcls: true
+          RestrictPublicBuckets: true
+        WebsiteConfiguration:
+          IndexDocument: index.html
+          ErrorDocument: index.html  # SPA routing
+
+    # CloudFront Origin Access Identity
+    FrontendOAI:
+      Type: AWS::CloudFront::CloudFrontOriginAccessIdentity
+      Properties:
+        CloudFrontOriginAccessIdentityConfig:
+          Comment: OAI for Project Tracker frontend
+
+    # S3 Bucket Policy (allow CloudFront only)
+    FrontendBucketPolicy:
+      Type: AWS::S3::BucketPolicy
+      Properties:
+        Bucket: !Ref FrontendBucket
+        PolicyDocument:
+          Statement:
+            - Effect: Allow
+              Principal:
+                CanonicalUser: !GetAtt FrontendOAI.S3CanonicalUserId
+              Action: s3:GetObject
+              Resource: !Sub '${FrontendBucket.Arn}/*'
+
+    # CloudFront Distribution
+    FrontendDistribution:
+      Type: AWS::CloudFront::Distribution
+      Properties:
+        DistributionConfig:
+          Enabled: true
+          DefaultRootObject: index.html
+          HttpVersion: http2and3
+          PriceClass: PriceClass_200  # US, Europe, Asia
+          Origins:
+            - Id: S3Origin
+              DomainName: !GetAtt FrontendBucket.RegionalDomainName
+              S3OriginConfig:
+                OriginAccessIdentity: !Sub 'origin-access-identity/cloudfront/${FrontendOAI}'
+          DefaultCacheBehavior:
+            TargetOriginId: S3Origin
+            ViewerProtocolPolicy: redirect-to-https
+            CachePolicyId: 658327ea-f89d-4fab-a63d-7e88639e58f6  # CachingOptimized
+            Compress: true
+          # SPA: return index.html for 404s (client-side routing)
+          CustomErrorResponses:
+            - ErrorCode: 403
+              ResponseCode: 200
+              ResponsePagePath: /index.html
+              ErrorCachingMinTTL: 10
+            - ErrorCode: 404
+              ResponseCode: 200
+              ResponsePagePath: /index.html
+              ErrorCachingMinTTL: 10
+
+  Outputs:
+    ApiUrl:
+      Description: API Gateway endpoint
+      Value: !Sub 'https://${HttpApi}.execute-api.${self:provider.region}.amazonaws.com'
+    FrontendBucketName:
+      Description: S3 bucket for frontend deployment
+      Value: !Ref FrontendBucket
+    CloudFrontUrl:
+      Description: CloudFront distribution URL
+      Value: !GetAtt FrontendDistribution.DomainName
+    CloudFrontDistributionId:
+      Description: CloudFront distribution ID (for invalidation)
+      Value: !Ref FrontendDistribution
+
+plugins:
+  - serverless-offline
+
+package:
+  individually: true
+  patterns:
+    - '!node_modules/**'
+    - '!src/**'
+    - 'dist/**'
+    - '!.env*'
+    - '!*.ts'
+    - '!tsconfig.json'

@@ -1,0 +1,14 @@
+{
+  "name": "@project-tracker/graphql-schema",
+  "version": "1.0.0",
+  "private": true,
+  "main": "schema.graphql",
+  "description": "",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs"
+}

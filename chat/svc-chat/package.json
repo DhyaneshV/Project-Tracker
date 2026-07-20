@@ -1,0 +1,32 @@
+{
+  "name": "@project-tracker/svc-chat",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "tsx watch src/local.ts",
+    "build": "tsc"
+  },
+  "dependencies": {
+    "@aws-sdk/client-apigatewaymanagementapi": "^3.1061.0",
+    "@aws-sdk/client-dynamodb": "^3.1061.0",
+    "@aws-sdk/client-s3": "^3.1061.0",
+    "@aws-sdk/lib-dynamodb": "^3.1061.0",
+    "@aws-sdk/s3-request-presigner": "^3.1061.0",
+    "@project-tracker/auth-library": "workspace:*",
+    "@project-tracker/shared-types": "workspace:*",
+    "dotenv": "^16.3.1",
+    "express": "^4.18.2",
+    "uuid": "^14.0.0",
+    "ws": "^8.16.0"
+  },
+  "devDependencies": {
+    "@types/aws-lambda": "^8.10.135",
+    "@types/express": "^4.17.21",
+    "@types/node": "^20.11.0",
+    "@types/uuid": "^11.0.0",
+    "@types/ws": "^8.5.10",
+    "tsx": "^4.7.0",
+    "typescript": "^5.3.3"
+  }
+}

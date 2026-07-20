@@ -1,0 +1,59 @@
+# Dependencies
+node_modules/
+
+# Build outputs
+dist/
+build/
+.cache/
+out/
+
+# Environment files (NEVER commit secrets)
+.env
+.env.*
+!.env.example
+!.env.*.example
+
+# Local operational material (never publish)
+*.local
+*.local.*
+*.backup
+*.bak
+*.pem
+*.key
+*.p12
+*.pfx
+*.crt
+*.cert
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/settings.json
+.idea/
+
+# Logs
+*.log
+npm-debug.log*
+
+# TypeScript
+*.tsbuildinfo
+
+# Test coverage
+coverage/
+
+# Serverless
+.serverless/
+
+# Temporary files
+*.tmp
+*.swp
+
+# Internal planning, generated verification output, and one-off maintenance scripts
+.kiro/
+*_output.txt
+*_out.txt
+*_log.txt
+*_persistent.log
+dev.log

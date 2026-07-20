@@ -1,0 +1,18 @@
+packages:
+  - 'audit/*'
+  - 'chat/*'
+  - 'clients/*'
+  - 'dashboard/*'
+  - 'notifications/*'
+  - 'packages/*'
+  - 'projects/*'
+  - 'proxy-middleware'
+  - 'releases/*'
+  - 'reports/*'
+  - 'root/*'
+  - 'sales/*'
+  - 'tasks/*'
+  - 'users/*'
+allowBuilds:
+  '@apollo/protobufjs': set this to true or false
+  esbuild: set this to true or false
